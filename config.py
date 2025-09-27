@@ -1,5 +1,7 @@
 import logging
+from logging.handlers import RotatingFileHandler
 import os
+from typing import Optional
 
 from dotenv import load_dotenv
 import prometheus_client
@@ -47,6 +49,7 @@ def register_otel_ids(_, __, event_dict):
     span = trace.get_current_span()
     context = span.get_span_context()
     if span.is_recording():
+        # ensure trace and span IDs are in same format as in UI
         event_dict["trace_id"] = format(context.trace_id, "032x")
         event_dict["span_id"] = format(context.span_id, "016x")
     return event_dict
@@ -104,10 +107,13 @@ def setup_telemetry():
     logger.debug("configured application telemetry successfully")
 
 
-def setup_tracing(resource: Resource) -> TracerProvider:
+def setup_tracing(resource: Resource) -> Optional[TracerProvider]:
     """Setup tracing within the application context to ensure reliable trace and span capture within FastAPI context, and to
     add the context to the logger for further distributed tracing. This is necessary else we do not see trace and span
     ID values in the middleware."""
+
+    if not OBSERVABILITY_BACKEND == "signoz":
+        return
 
     tracer_provider = TracerProvider(resource=resource)
 
@@ -121,6 +127,16 @@ def setup_tracing(resource: Resource) -> TracerProvider:
 
 def setup_logging(resource: Resource):
     """Enable log collection and processing through opentelemetry."""
+
+    if not OBSERVABILITY_BACKEND == "signoz":
+        # Add file handler for Promtail
+        file_handler = logging.FileHandler("app.log")
+        formatter = logging.Formatter("%(asctime)s %(levelname)s [%(name)s] %(message)s")
+
+        file_handler.setFormatter(formatter)
+        logging.getLogger().addHandler(file_handler)
+
+        return
 
     logger_provider = LoggerProvider(resource=resource)
     set_logger_provider(logger_provider)
@@ -137,6 +153,7 @@ def setup_metrics(resource: Resource) -> tuple[MeterProvider, tuple[Counter, His
     """Enables metrics collection and processing through opentelemetry. Exposes distinct metrics instruments for use
     throughout the application."""
 
+    # TODO: ensure otel metrics exporters are only configured if backend is signoz
     metric_exporter = OTLPMetricExporter(endpoint=OTEL_BACKEND_ENDPOINT)
     otel_metric_reader = PeriodicExportingMetricReader(metric_exporter)
 

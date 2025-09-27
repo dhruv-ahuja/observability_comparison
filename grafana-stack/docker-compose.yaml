@@ -1,3 +1,5 @@
+# CREDIT: cherry picks config from https://github.com/maiobarbero/grafana-prometheus-loki
+
 services:
   loki:
     image: grafana/loki:latest
@@ -7,17 +9,26 @@ services:
       - ./loki-config.yaml:/etc/loki/loki-config.yaml
     command: -config.file=/etc/loki/loki-config.yaml
   
+  promtail:
+    image: grafana/promtail:latest
+    volumes:
+      - ./promtail-config.yaml:/etc/promtail/promtail-config.yaml
+      # mount the application log file to enable promtail to read and forward logs from this directory
+      - /Users/dhruv/coding/tasks/observability_comparison/app.log:/var/log/app.log
+    command: -config.file=/etc/promtail/promtail-config.yaml
+  
   prometheus:
     image: prom/prometheus:v2.46.0
     ports:
       - 9090:9090
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
-    network_mode: "host"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
   
   grafana:
     image: grafana/grafana:latest
     ports:
       - "3000:3000"
-
-  
+    volumes:
+      - ./config/grafana:/var/lib/grafana
