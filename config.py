@@ -1,12 +1,16 @@
 import logging
+import os
 
+from dotenv import load_dotenv
+import prometheus_client
 import structlog
 from fastapi import FastAPI
 from opentelemetry import metrics, trace
 from opentelemetry._logs import set_logger_provider
 from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter  # Fixed import path
+from opentelemetry.exporter.prometheus import PrometheusMetricReader
+from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.logging import LoggingInstrumentor
 from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
@@ -17,6 +21,16 @@ from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from prometheus_client import CollectorRegistry
+
+# ---- Config Vars -----
+
+load_dotenv()
+
+
+OTEL_BACKEND_ENDPOINT = os.getenv("OTEL_BACKEND_ENDPOINT", "http://localhost:4317")
+OBSERVABILITY_BACKEND = os.getenv("OBSERVABILITY_BACKEND", "signoz")
+
 
 # ---- Logging -----
 
@@ -63,9 +77,9 @@ logger = structlog.get_logger()
 
 telemetry_configured = False
 
-OTEL_BACKEND_ENDPOINT = "http://localhost:4317"
-
 # NOTE: ideally we would use DI or singleton pattern class to maintain state
+prometheus_registry = None
+
 counter = None
 histogram = None
 gauge = None
@@ -124,9 +138,21 @@ def setup_metrics(resource: Resource) -> tuple[MeterProvider, tuple[Counter, His
     throughout the application."""
 
     metric_exporter = OTLPMetricExporter(endpoint=OTEL_BACKEND_ENDPOINT)
-    metric_reader = PeriodicExportingMetricReader(metric_exporter)
+    otel_metric_reader = PeriodicExportingMetricReader(metric_exporter)
 
-    meter_provider = MeterProvider(resource=resource, metric_readers=[metric_reader])
+    metric_readers = [otel_metric_reader]
+    if OBSERVABILITY_BACKEND == "prometheus":
+        # register the prometheus specific reader that'll expose a /metrics endpoint usable by prometheus scrape job
+        # this enables us to avoid rewriting metrics instruments for prometheus specifically
+        prometheus_metric_reader = PrometheusMetricReader()
+        metric_readers.append(prometheus_metric_reader)
+
+        global prometheus_registry
+        prometheus_registry = prometheus_client.REGISTRY
+
+        logger.debug("configured Prometheus metric reader")
+
+    meter_provider = MeterProvider(resource=resource, metric_readers=metric_readers)
     metrics.set_meter_provider(meter_provider)
 
     meter = meter_provider.get_meter(name="python_app_metrics")

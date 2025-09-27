@@ -4,6 +4,8 @@ from typing import Awaitable
 import structlog
 from fastapi import FastAPI, Request
 from fastapi.exceptions import HTTPException
+from fastapi.responses import Response
+from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 
 import config
 
@@ -63,6 +65,17 @@ def slow_response():
 def error_response():
     logger.error("Mocking an application error")
     raise HTTPException(status_code=500, detail="error_response")
+
+
+@app.get("/metrics")
+def metrics():
+    """Exposes application metrics in a Prometheus compatible format."""
+
+    registry = config.prometheus_registry
+    if not registry:
+        return HTTPException(status_code=400, detail="Prometheus observability platform not configured")
+
+    return Response(generate_latest(registry), media_type=CONTENT_TYPE_LATEST)
 
 
 if __name__ == "__main__":
