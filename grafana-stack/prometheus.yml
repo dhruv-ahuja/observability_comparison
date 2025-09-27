@@ -1,0 +1,25 @@
+# Global configuration
+global:
+  scrape_interval: 15s  # Set the scrape interval to every 15 seconds. Default is every 1 minute.
+  evaluation_interval: 15s  # Evaluate rules every 15 seconds. The default is every 1 minute.
+  # scrape_timeout is set to the global default (10s).
+
+# Scrape configurations
+scrape_configs:
+  # Scrape Prometheus itself
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"] 
+
+  - job_name: "loki"
+    metrics_path: "/metrics" 
+    static_configs:
+      - targets: ["loki:3100"]  
+
+  - job_name: "application"
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ["host.docker.internal:8000"]
+    # For some systems, you may need to use the host's IP address instead
+    # or network_mode: "host" in docker-compose
+

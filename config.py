@@ -157,6 +157,7 @@ def setup_metrics(resource: Resource) -> tuple[MeterProvider, tuple[Counter, His
 
     meter = meter_provider.get_meter(name="python_app_metrics")
 
+    # TODO: add prometheus native implementations
     counter = meter.create_counter(
         name="http_requests_total",
         unit="1",
