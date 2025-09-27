@@ -132,7 +132,6 @@ services:
       - TELEMETRY_ENABLED=true
       - DEPLOYMENT_TYPE=docker-standalone-amd
       - DOT_METRICS_ENABLED=true
-      - SIGNOZ_JWT_SECRET=auto-generated-for-dev-only-do-not-use-in-production
     healthcheck:
       test:
         - CMD
@@ -159,7 +158,6 @@ services:
     environment:
       - OTEL_RESOURCE_ATTRIBUTES=host.name=signoz-host,os.type=linux
       - LOW_CARDINAL_EXCEPTION_GROUPING=false
-      - SIGNOZ_JWT_SECRET=auto-generated-for-dev-only-do-not-use-in-production
     ports:
       # - "1777:1777"     # pprof extension
       - "4317:4317" # OTLP gRPC receiver
@@ -187,8 +185,6 @@ services:
       - async
       - --dsn=tcp://clickhouse:9000
       - --up=
-    environment:
-      - SIGNOZ_JWT_SECRET=auto-generated-for-dev-only-do-not-use-in-production
     restart: on-failure
 networks:
   signoz-net:
