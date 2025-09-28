@@ -13,7 +13,7 @@ services:
     image: grafana/promtail:latest
     volumes:
       - ./promtail-config.yaml:/etc/promtail/promtail-config.yaml
-      # mount the application log file to enable promtail to read and forward logs from this directory
+      # mount the application log file to enable promtail to read and forward logs from this file
       - /Users/dhruv/coding/tasks/observability_comparison/app.log:/var/log/app.log
     command: -config.file=/etc/promtail/promtail-config.yaml
   
