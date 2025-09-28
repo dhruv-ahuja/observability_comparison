@@ -137,7 +137,6 @@ def setup_logging(resource: Resource):
 
     if OBSERVABILITY_BACKEND != "signoz":
         loki_handler = LokiLoggerHandler(f"{LOKI_BACKEND_ENDPOINT}/loki/api/v1/push", labels={"service": "python_app"})
-        loki_handler.setLevel(logging.INFO)
 
         logging.getLogger().addHandler(loki_handler)
         return
