@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 import prometheus_client
 import structlog
 from fastapi import FastAPI
+from loki_logger_handler.loki_logger_handler import LokiLoggerHandler
 from opentelemetry import metrics, trace
 from opentelemetry._logs import set_logger_provider
 from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
@@ -28,6 +29,7 @@ load_dotenv()
 
 OTEL_BACKEND_ENDPOINT = os.getenv("OTEL_BACKEND_ENDPOINT", "http://localhost:4317")
 OBSERVABILITY_BACKEND = os.getenv("OBSERVABILITY_BACKEND", "signoz")
+LOKI_BACKEND_ENDPOINT = os.getenv("LOKI_BACKEND_ENDPOINT", "http://localhost:3100")
 
 
 # ---- Logging -----
@@ -51,17 +53,22 @@ def register_otel_ids(_, __, event_dict):
     return event_dict
 
 
+structlog_processors = [
+    structlog.contextvars.merge_contextvars,
+    structlog.processors.TimeStamper(fmt="ISO"),
+    structlog.processors.add_log_level,
+    structlog.processors.StackInfoRenderer(),
+    structlog.processors.format_exc_info,
+    register_otel_ids,
+]
+# TODO: this ensures loki handler doesn't double encode the JSON log message, this is not ideal
+if OBSERVABILITY_BACKEND == "signoz":
+    structlog_processors.append(structlog.processors.JSONRenderer())
+else:
+    structlog_processors.append(structlog.processors.LogfmtRenderer())
+
 structlog.configure(
-    processors=[
-        # merge_contextvars ensures that our bound contextvars are added to log entries as attributes
-        structlog.contextvars.merge_contextvars,
-        structlog.processors.TimeStamper(fmt="ISO"),
-        structlog.processors.add_log_level,
-        structlog.processors.StackInfoRenderer(),
-        structlog.processors.format_exc_info,
-        register_otel_ids,
-        structlog.processors.JSONRenderer(),
-    ],
+    processors=structlog_processors,
     # ensure structlog uses logger objects to emit logs, enabling otel log collector to push them to the
     # observability backend
     logger_factory=structlog.stdlib.LoggerFactory(),
@@ -129,14 +136,10 @@ def setup_logging(resource: Resource):
     """Enable log collection and processing through opentelemetry."""
 
     if OBSERVABILITY_BACKEND != "signoz":
-        # Add file handler for Promtail to scrape and pass logs to Loki
-        file_handler = logging.FileHandler("app.log")
-        # output just the json message string to the file
-        formatter = logging.Formatter("%(message)s")
+        loki_handler = LokiLoggerHandler(f"{LOKI_BACKEND_ENDPOINT}/loki/api/v1/push", labels={"service": "python_app"})
+        loki_handler.setLevel(logging.INFO)
 
-        file_handler.setFormatter(formatter)
-        logging.getLogger().addHandler(file_handler)
-
+        logging.getLogger().addHandler(loki_handler)
         return
 
     logger_provider = LoggerProvider(resource=resource)
