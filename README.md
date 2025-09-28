@@ -2,7 +2,7 @@
 
 ## Introduction
 
-Observability Setup and Value Comparison PoC between SigNoz and (Prometheus, Grafana, and Loki) stack. This setup enables user to compare the effort requirements, ease of use, maintainability and overall value between different self-hosted observability stacks.
+Observability Setup and Value Comparison PoC between SigNoz and Prometheus, Grafana and Loki stack. This setup enables user to compare the effort requirements, ease of use, maintainability and overall value between different self-hosted observability stacks.
 
 Stack A is SigNoz, built on OpenTelemetry standards, enabling end-to-end observability out of the box.
 Stack B uses Prometheus, Grafana and Loki and requires additional setup to enable metrics and logs coverage.
@@ -11,7 +11,7 @@ Stack B uses Prometheus, Grafana and Loki and requires additional setup to enabl
 
 ### Prerequisites
 
-You must have Docker (with Docker Compose support) installed, and [host networking]((https://docs.docker.com/desktop/features/networking/#i-want-to-connect-from-a-container-to-a-service-on-the-host)) enabled inside Docker for the Prometheus-Grafana-Loki setup. This is necessary for Prometheus to communicate with the application running on host machine network.
+You must have Docker (with Docker Compose support) installed, and [host networking](https://docs.docker.com/desktop/features/networking/#i-want-to-connect-from-a-container-to-a-service-on-the-host) enabled inside Docker for the Prometheus-Grafana-Loki setup. This is necessary for Prometheus to communicate with the application running on host machine network.
 
 ### Application Setup
 
@@ -84,11 +84,13 @@ You have now configured `Loki` for logs and `Prometheus` for metrics ingestion, 
 ### Stopping the Services
 
 To stop the SigNoz stack:
+
 ```bash
 docker compose -f signoz/deploy/docker/docker-compose.yaml down
 ```
 
 To stop the Prometheus-Grafana-Loki stack:
+
 ```bash
 docker compose -f grafana-stack/docker-compose.yaml down
 ```
