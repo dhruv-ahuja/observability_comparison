@@ -1,8 +1,11 @@
 services:
   python-app:
+    container_name: python_app
     build: .
     ports:
       # user can override host port mapping, defaults to 8000
       - "${PORT:-8000}:8000"
     environment:
       - OBSERVABILITY_BACKEND=${OBSERVABILITY_BACKEND:-signoz}
+      - OTEL_BACKEND_ENDPOINT=http://signoz-otel-collector:4317
+      - LOKI_BACKEND_ENDPOINT=http://loki:3100

@@ -9,6 +9,8 @@ services:
       - ./loki-config.yaml:/etc/loki/loki-config.yaml
       - ./data/loki:/loki
     command: -config.file=/etc/loki/loki-config.yaml
+    networks:
+      - grafana-stack
   
   prometheus:
     image: prom/prometheus:v2.46.0
@@ -18,13 +20,17 @@ services:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
     extra_hosts:
       - "host.docker.internal:host-gateway"
-  
+    networks:
+        - grafana-stack
+        
   grafana:
     image: grafana/grafana:latest
     ports:
       - "3000:3000"
     volumes:
       - ./data/grafana:/var/lib/grafana
+    networks:
+      - grafana-stack
 
 networks:
   grafana-stack:
