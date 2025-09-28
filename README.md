@@ -40,7 +40,7 @@ opentelemetry-instrument python main.py
 Start the self-hosted Signoz stack:
 
 ```bash
-docker compose -f signoz/deploy/docker/docker-compose.yml up -d --remove-orphans
+docker compose -f signoz/deploy/docker/docker-compose.yaml up -d --remove-orphans
 ```
 
 Access the SigNoz application at `http://localhost:8084`, create login credentials and you can now start using it for your observability needs.
@@ -85,7 +85,7 @@ You have now configured `Loki` for logs and `Prometheus` for metrics ingestion, 
 
 To stop the SigNoz stack:
 ```bash
-docker compose -f signoz/deploy/docker/docker-compose.yml down
+docker compose -f signoz/deploy/docker/docker-compose.yaml down
 ```
 
 To stop the Prometheus-Grafana-Loki stack:
