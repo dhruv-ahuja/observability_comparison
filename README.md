@@ -7,6 +7,9 @@ Observability Setup and Value Comparison PoC between SigNoz and Prometheus, Graf
 Stack A is SigNoz, built on OpenTelemetry standards, enabling end-to-end observability out of the box.
 Stack B uses Prometheus, Grafana and Loki and requires additional setup to enable metrics and logs coverage.
 
+> **NOTE**
+> To keep the demonstration straightforward, the application supports usage of only one stack at a time.
+
 ## Usage Guide
 
 ### Prerequisites
