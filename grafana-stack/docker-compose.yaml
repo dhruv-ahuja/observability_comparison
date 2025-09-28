@@ -25,3 +25,7 @@ services:
       - "3000:3000"
     volumes:
       - ./data/grafana:/var/lib/grafana
+
+networks:
+  grafana-stack:
+    name: grafana-stack

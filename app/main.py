@@ -7,7 +7,7 @@ from fastapi.exceptions import HTTPException
 from fastapi.responses import Response
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 
-import config
+from app import config
 
 config.setup_telemetry()
 logger = structlog.get_logger()
@@ -76,9 +76,3 @@ def metrics():
         return HTTPException(status_code=400, detail="Prometheus observability platform not configured")
 
     return Response(generate_latest(registry), media_type=CONTENT_TYPE_LATEST)
-
-
-if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)
