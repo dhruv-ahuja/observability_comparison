@@ -7,43 +7,22 @@ Observability Setup and Value Comparison PoC between SigNoz and Prometheus, Graf
 Stack A is SigNoz, built on OpenTelemetry standards, enabling end-to-end observability out of the box.
 Stack B uses Prometheus, Grafana and Loki and requires additional setup to enable metrics and logs coverage.
 
-> **NOTE**
-> To keep the demonstration straightforward, the application supports usage of only one stack at a time.
+To keep the demonstration straightforward and to ensure separation of concerns, the application supports usage of only one stack at a time.
 
 ## Usage Guide
 
-### Prerequisites
-
-You must have Docker (with Docker Compose support) installed, and [host networking](https://docs.docker.com/desktop/features/networking/#i-want-to-connect-from-a-container-to-a-service-on-the-host) enabled inside Docker for the Prometheus-Grafana-Loki setup. This is necessary for Prometheus to communicate with the application running on host machine network.
-
-### Application Setup
-
-Create a virtual environment using Python version >= 3.11:
-
-```bash
-python3.11 -m venv .venv && source .venv/bin/activate
-```
-
-Install dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-You are now ready to start the application based on the observability stack of your choice.
-
 ### SigNoz Setup
 
-Start the Python application:
-
-```bash
-opentelemetry-instrument python main.py
-```
-
-Start the self-hosted Signoz stack:
+Start the self-hosted SigNoz stack:
 
 ```bash
 docker compose -f signoz/deploy/docker/docker-compose.yaml up -d --remove-orphans
+```
+
+Start the Python application and add it to the stack's external network. Add `sudo` before the command, if you get a permission denied error for `--build`:
+
+```bash
+docker compose up -d --build && docker network connect signoz-net python_app
 ```
 
 Access the SigNoz application at `http://localhost:8084`, create login credentials and you can now start using it for your observability needs.
@@ -52,16 +31,16 @@ Access the SigNoz application at `http://localhost:8084`, create login credentia
 
 ### Prometheus-Grafana-Loki Setup
 
-Start the Python application:
-
-```bash
-OPENTELEMETRY_BACKEND=grafana-stack opentelemetry-instrument python main.py
-```
-
 Start the self-hosted Prometheus-Grafana-Loki stack:
 
 ```bash
 docker compose -f grafana-stack/docker-compose.yaml up -d
+```
+
+Start the Python application and add it to the stack's external network. Add `sudo` before the command, if you get a permission denied error for `--build`:
+
+```bash
+OBSERVABILITY_BACKEND=grafana-stack docker compose up -d --build && docker network connect grafana-stack python_app
 ```
 
 Visit `http://localhost:9090/targets?search=` to access the Prometheus application, and check if all the targets are being scraped from. Refresh the page as it may take some time.
