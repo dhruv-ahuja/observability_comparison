@@ -63,6 +63,16 @@ Click on `Save & Test` to save the data source.
 
 You have now configured `Loki` for logs and `Prometheus` for metrics ingestion, for visualization in Grafana, and can now start using it for your observability needs.
 
+### Generating Data for Visualization
+
+Please ensure you have `locust` installed on your system. Then run the command:
+
+```bash
+locust -f locustfile.py --headless -u 20 -r 2 --run-time 1m
+```
+
+This will simulate 20 load of users for 1 minute, you may configure values based on your needs.
+
 ### Stopping the Services
 
 To stop the SigNoz stack:
