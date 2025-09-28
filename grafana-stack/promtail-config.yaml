@@ -24,8 +24,12 @@ scrape_configs:
         - json:
             expressions:
               level: level
-              message: msg
+              message: event
               timestamp: timestamp
+              path: path
+              method: method
+              process_time: process_time
+              status_code: status_code
         - labels:
             level:
         - output:

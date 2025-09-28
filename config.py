@@ -131,7 +131,8 @@ def setup_logging(resource: Resource):
     if OBSERVABILITY_BACKEND != "signoz":
         # Add file handler for Promtail to scrape and pass logs to Loki
         file_handler = logging.FileHandler("app.log")
-        formatter = logging.Formatter("%(asctime)s %(levelname)s [%(name)s] %(message)s")
+        # output just the json message string to the file
+        formatter = logging.Formatter("%(message)s")
 
         file_handler.setFormatter(formatter)
         logging.getLogger().addHandler(file_handler)
