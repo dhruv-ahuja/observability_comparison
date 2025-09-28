@@ -24,7 +24,7 @@ async def handle_incoming_requests(request: Request, call_next: Awaitable):
 
     global active_users
     active_users += 1
-    config.gauge.set(active_users, route_attrs)
+    config.set_gauge(active_users, route_attrs)
 
     logger.debug("Request received", **route_attrs)
     start_time = time.perf_counter()
@@ -34,12 +34,12 @@ async def handle_incoming_requests(request: Request, call_next: Awaitable):
     process_time = time.perf_counter() - start_time
     response.headers["X-Process-Time"] = f"{process_time:.2f}"
 
-    config.counter.add(1, route_attrs)
-    config.histogram.record(process_time, route_attrs)
+    config.increment_counter(1, route_attrs)
+    config.record_histogram(process_time, route_attrs)
 
     # we are considering each user to be active only for the duration of the request
     active_users -= 1
-    config.gauge.set(active_users, route_attrs)
+    config.set_gauge(active_users, route_attrs)
 
     logger.debug(
         "Request processed",

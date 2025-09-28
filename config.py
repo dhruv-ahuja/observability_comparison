@@ -1,5 +1,4 @@
 import logging
-from logging.handlers import RotatingFileHandler
 import os
 from typing import Optional
 
@@ -11,19 +10,16 @@ from opentelemetry import metrics, trace
 from opentelemetry._logs import set_logger_provider
 from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-from opentelemetry.exporter.prometheus import PrometheusMetricReader
 from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.logging import LoggingInstrumentor
 from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
-from opentelemetry.sdk.metrics import Counter, Histogram, MeterProvider
-from opentelemetry.sdk.metrics import _Gauge as Gauge
+from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from prometheus_client import CollectorRegistry
 
 # ---- Config Vars -----
 
@@ -89,6 +85,10 @@ gauge = None
 
 
 def setup_telemetry():
+    """Sets up telemetry for the application, including tracing, logging, and metrics based on observability backend
+    in use. This ensures services are instrumented in their supported native manner with clean separation of
+    concerns."""
+
     # ensure global boolean flag to prevent warnings from provider override attempts
     global telemetry_configured
     if telemetry_configured:
@@ -104,7 +104,7 @@ def setup_telemetry():
     counter, histogram, gauge = metrics_instruments
 
     telemetry_configured = True
-    logger.debug("configured application telemetry successfully")
+    logger.debug("configured application telemetry successfully", backend=OBSERVABILITY_BACKEND)
 
 
 def setup_tracing(resource: Resource) -> Optional[TracerProvider]:
@@ -112,7 +112,7 @@ def setup_tracing(resource: Resource) -> Optional[TracerProvider]:
     add the context to the logger for further distributed tracing. This is necessary else we do not see trace and span
     ID values in the middleware."""
 
-    if not OBSERVABILITY_BACKEND == "signoz":
+    if OBSERVABILITY_BACKEND != "signoz":
         return
 
     tracer_provider = TracerProvider(resource=resource)
@@ -128,8 +128,8 @@ def setup_tracing(resource: Resource) -> Optional[TracerProvider]:
 def setup_logging(resource: Resource):
     """Enable log collection and processing through opentelemetry."""
 
-    if not OBSERVABILITY_BACKEND == "signoz":
-        # Add file handler for Promtail
+    if OBSERVABILITY_BACKEND != "signoz":
+        # Add file handler for Promtail to scrape and pass logs to Loki
         file_handler = logging.FileHandler("app.log")
         formatter = logging.Formatter("%(asctime)s %(levelname)s [%(name)s] %(message)s")
 
@@ -149,32 +149,41 @@ def setup_logging(resource: Resource):
     LoggingInstrumentor().instrument(set_logging_format=True)
 
 
-def setup_metrics(resource: Resource) -> tuple[MeterProvider, tuple[Counter, Histogram, Gauge]]:
-    """Enables metrics collection and processing through opentelemetry. Exposes distinct metrics instruments for use
-    throughout the application."""
+def setup_metrics(resource: Resource) -> tuple[Optional[MeterProvider], tuple]:
+    """Enables metrics collection and processing. Exposes distinct metrics instruments for use
+    throughout the application. Uses native Prometheus metrics when OBSERVABILITY_BACKEND is 'prometheus'
+    and OpenTelemetry metrics for other backends."""
 
-    # TODO: ensure otel metrics exporters are only configured if backend is signoz
+    if OBSERVABILITY_BACKEND != "signoz":
+        # Setup native Prometheus metrics without otel
+        global prometheus_registry
+        # registry is thread safe, it gathers metrics in memory and provides output in required formats
+        prometheus_registry = prometheus_client.REGISTRY
+
+        labelnames = ["method", "path"]
+        counter = prometheus_client.Counter(
+            "http_requests_total", "Total number of HTTP requests", registry=prometheus_registry, labelnames=labelnames
+        )
+        histogram = prometheus_client.Histogram(
+            "http_request_duration_seconds",
+            "Duration of HTTP requests",
+            registry=prometheus_registry,
+            labelnames=labelnames,
+        )
+        gauge = prometheus_client.Gauge(
+            "active_users", "Number of active users", registry=prometheus_registry, labelnames=labelnames
+        )
+
+        logger.debug("configured Prometheus native metrics")
+        return None, (counter, histogram, gauge)
+
     metric_exporter = OTLPMetricExporter(endpoint=OTEL_BACKEND_ENDPOINT)
     otel_metric_reader = PeriodicExportingMetricReader(metric_exporter)
 
-    metric_readers = [otel_metric_reader]
-    if OBSERVABILITY_BACKEND == "prometheus":
-        # register the prometheus specific reader that'll expose a /metrics endpoint usable by prometheus scrape job
-        # this enables us to avoid rewriting metrics instruments for prometheus specifically
-        prometheus_metric_reader = PrometheusMetricReader()
-        metric_readers.append(prometheus_metric_reader)
-
-        global prometheus_registry
-        prometheus_registry = prometheus_client.REGISTRY
-
-        logger.debug("configured Prometheus metric reader")
-
-    meter_provider = MeterProvider(resource=resource, metric_readers=metric_readers)
+    meter_provider = MeterProvider(resource=resource, metric_readers=[otel_metric_reader])
     metrics.set_meter_provider(meter_provider)
-
     meter = meter_provider.get_meter(name="python_app_metrics")
 
-    # TODO: add prometheus native implementations
     counter = meter.create_counter(
         name="http_requests_total",
         unit="1",
@@ -191,7 +200,38 @@ def setup_metrics(resource: Resource) -> tuple[MeterProvider, tuple[Counter, His
         description="Number of active users",
     )
 
+    logger.debug("configured OpenTelemetry metrics")
     return meter_provider, (counter, histogram, gauge)
+
+
+def increment_counter(amount, attributes):
+    """Increment the counter by the specified amount."""
+
+    global counter
+    if OBSERVABILITY_BACKEND == "signoz":
+        counter.add(amount, attributes)
+    else:
+        counter.labels(**attributes).inc(amount)
+
+
+def record_histogram(value, attributes):
+    """Record a value in the histogram."""
+
+    global histogram
+    if OBSERVABILITY_BACKEND == "signoz":
+        histogram.record(value, attributes)
+    else:
+        histogram.labels(**attributes).observe(value)
+
+
+def set_gauge(value, attributes):
+    """Set the gauge to the specified value."""
+
+    global gauge
+    if OBSERVABILITY_BACKEND == "signoz":
+        gauge.set(value, attributes)
+    else:
+        gauge.labels(**attributes).set(value)
 
 
 def instrument_fastapi(app: FastAPI):
