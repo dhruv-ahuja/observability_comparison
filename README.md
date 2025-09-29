@@ -13,7 +13,7 @@ To keep the demonstration straightforward and to ensure separation of concerns, 
 
 ### SigNoz Setup
 
-Start the self-hosted SigNoz stack:
+First, start the self-hosted SigNoz stack, we will later add our application to this docker network:
 
 ```bash
 docker compose -f signoz/deploy/docker/docker-compose.yaml up -d --remove-orphans
@@ -31,7 +31,7 @@ Access the SigNoz application at `http://localhost:8084`, create login credentia
 
 ### Prometheus-Grafana-Loki Setup
 
-Start the self-hosted Prometheus-Grafana-Loki stack:
+First, start the self-hosted Prometheus-Grafana-Loki stack, we will later add our application to this docker network:
 
 ```bash
 docker compose -f grafana-stack/docker-compose.yaml up -d
