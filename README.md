@@ -25,7 +25,7 @@ Start the Python application and add it to the stack's external network. Add `su
 docker compose up -d --build && docker network connect signoz-net python_app
 ```
 
-Access the SigNoz application at `http://localhost:8084`, create login credentials and you can now start using it for your observability needs.
+Access the SigNoz application at `http://localhost:8080`, create login credentials and you can now start using it for your observability needs.
 
 ![SigNoz Onboarding View](img/signoz_onboarding.png)
 

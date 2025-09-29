@@ -127,7 +127,7 @@ check_os() {
 # The script should error out in case they aren't available
 check_ports_occupied() {
     local port_check_output
-    local ports_pattern="8084|4317"
+    local ports_pattern="8080|4317"
 
     if is_mac; then
         port_check_output="$(netstat -anp tcp | awk '$6 == "LISTEN" && $4 ~ /^.*\.('"$ports_pattern"')$/')"
@@ -144,7 +144,7 @@ check_ports_occupied() {
         send_event "port_not_available"
 
         echo "+++++++++++ ERROR ++++++++++++++++++++++"
-        echo "SigNoz requires ports 8084 & 4317 to be open. Please shut down any other service(s) that may be running on these ports."
+        echo "SigNoz requires ports 8080 & 4317 to be open. Please shut down any other service(s) that may be running on these ports."
         echo "You can run SigNoz on another port following this guide https://signoz.io/docs/install/troubleshooting/"
         echo "++++++++++++++++++++++++++++++++++++++++"
         echo ""
